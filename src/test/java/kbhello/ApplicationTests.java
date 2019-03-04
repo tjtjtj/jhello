@@ -1,4 +1,4 @@
-package jhello;
+package kbhello;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -28,3 +28,4 @@ HELP.md
 ### gradle ###
 .gradle
 /build/
+/bin/
