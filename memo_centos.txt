@@ -1,0 +1,293 @@
+memo centosの場合
+------------------
+
+## ビルド
+
+```
+$ ./gradlew build
+```
+
+## 実行
+
+```
+$ java -jar ./build/libs/kbhello-0.1.0.jar
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::        (v2.0.5.RELEASE)
+
+:
+:
+```
+
+動作確認
+
+```
+$ curl localhost:8080
+Hello Docker World
+```
+
+## 依存モジュールを調べる
+
+java.base, java.logging に依存していることが分かる
+
+```
+> jdeps --list-deps ./build/libs/kbhello-0.1.0.jar
+  java.base
+  java.logging
+```
+
+## 最小限のJRE作成
+
+jlink に必要なモジュールを指定し、最小限のJREを作成する。
+- --compress : 2 zip??
+- --module-path : jdkのモジュールディレクトリを指定
+- --add-modules: jdeps で調べた依存モジュールを指定
+- --output : JRE生成先を指定
+
+```
+$ rm -rf ./jre-mini
+$ jlink --compress=2 --module-path %JAVA_HOME%/jmods --add-modules java.base,java.logging --output jre-mini
+```
+
+サイズ確認
+
+```
+$ du -sh jre-mini/
+36M     jre-mini/
+```
+
+## jre-min から実行
+
+実行したが失敗。java.sql.SQLException??
+
+```
+$ ./jre-mini/bin/java -jar ./build/libs/kbhello-0.1.0.jar
+Exception in thread "main" java.lang.reflect.InvocationTargetException
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+        at org.springframework.boot.loader.MainMethodRunner.run(MainMethodRunner.java:48)
+        at org.springframework.boot.loader.Launcher.launch(Launcher.java:87)
+        at org.springframework.boot.loader.Launcher.launch(Launcher.java:50)
+        at org.springframework.boot.loader.JarLauncher.main(JarLauncher.java:51)
+Caused by: java.lang.IllegalArgumentException: Cannot instantiate interface org.springframework.context.ApplicationContextInitializer : org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer
+        at org.springframework.boot.SpringApplication.createSpringFactoriesInstances(SpringApplication.java:465)
+        at org.springframework.boot.SpringApplication.getSpringFactoriesInstances(SpringApplication.java:444)
+        at org.springframework.boot.SpringApplication.getSpringFactoriesInstances(SpringApplication.java:435)
+        at org.springframework.boot.SpringApplication.<init>(SpringApplication.java:271)
+        at org.springframework.boot.SpringApplication.<init>(SpringApplication.java:252)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1277)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1265)
+        at kbhello.Application.main(Application.java:18)
+        ... 8 more
+Caused by: java.lang.NoClassDefFoundError: java/sql/SQLException
+        at org.springframework.beans.BeanUtils.instantiateClass(BeanUtils.java:168)
+        at org.springframework.boot.SpringApplication.createSpringFactoriesInstances(SpringApplication.java:461)
+        ... 15 more
+Caused by: java.lang.ClassNotFoundException: java.sql.SQLException
+        at java.base/java.net.URLClassLoader.findClass(URLClassLoader.java:471)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:588)
+        at org.springframework.boot.loader.LaunchedURLClassLoader.loadClass(LaunchedURLClassLoader.java:93)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:521)
+        ... 17 more
+```
+
+参考にした[ここ](https://qiita.com/h-r-k-matsumoto/items/294eeb838cfd062d75b6#spring-boot%E3%82%A2%E3%83%97%E3%83%AA%E3%82%B1%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3%E3%82%92jdeps%E3%81%A7%E4%BE%9D%E5%AD%98%E9%96%A2%E4%BF%82%E8%A6%8B%E3%81%A6%E3%82%82%E6%AD%A3%E7%A2%BA%E3%81%A7%E3%81%AF%E3%81%AA%E3%81%84) 
+によるとspringbootだと jdeps が正確じゃないそうです。↑の参考ページから --add-modules をパクりました。
+
+```
+$ rm -rf ./jre-mini
+$ jlink --compress=2 --output jre-mini --module-path %JAVA_HOME%/jmods --add-modules jdk.jfr,jdk.management.agent,java.base,java.logging,java.xml,jdk.unsupported,java.sql,java.naming,java.desktop,java.management,java.security.jgss,java.instrument
+```
+
+サイズ確認
+
+```
+$ du -sh jre-mini/
+57M     jre-mini/
+```
+
+## jre-min から実行 2回目
+
+起動した！
+
+```
+$ ./jre-mini/bin/java -jar ./build/libs/kbhello-0.1.0.jar
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::        (v2.0.5.RELEASE)
+:
+:
+```
+
+動作確認もOK
+
+```
+$ curl localhost:8080
+Hello Docker World
+```
+
+
+## これでイメージを作成する
+
+調べると 2回FROMするDockerfileが多い。なんなら jar生成->jre生成->イメージ生成 するDockerfileの書くかとも思ったがどうなんだ？
+今回は build, jlink 後のファイルを利用してイメージ生成する。
+
+Dockerfile
+
+```
+FROM alpine:3.9
+RUN mkdir -p /opt/jre
+COPY ./jre-mini/ opt/jre
+RUN mkdir /app
+COPY ./build/libs/kbhello-0.1.0.jar /app
+ENV JAVA_OPTS=""
+ENTRYPOINT [ "sh", "-c", "/opt/jre/bin/java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar /app/kbhello-0.1.0.jar" ]
+```
+
+
+
+export JAVA_HOME=/opt/jre/
+export PATH=$PATH:$JAVA_HOME/bin
+
+
+
+FROM alpine:3.9
+COPY ./jre-mini/ /opt
+RUN mkdir /app
+COPY ./build/libs/kbhello-0.1.0.jar /app
+
+WORKDIR /root
+ENTRYPOINT ["/bin/sh", "-c", "while true; do echo hello world; sleep 1; done"]
+
+
+```
+FROM frolvlad/alpine-glibc
+
+RUN mkdir -p /opt/jre
+COPY ./jre-mini/ opt/jre
+RUN mkdir /app
+COPY ./build/libs/kbhello-0.1.0.jar /app
+ENV JAVA_OPTS=""
+ENTRYPOINT [ "sh", "-c", "/opt/jre/bin/java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar /app/kbhello-0.1.0.jar" ]
+```
+
+
+
+イメージ生成からpush
+
+
+docker build -t test .
+
+
+docker image rm kbhello:2
+docker image rm 192.168.0.1:5000/kbhello:2
+
+docker build -t kbhello:2 .
+
+docker run -it kbhello:2
+
+docker run -entrypoint="/bin/bash" -i kbhello:2
+
+docker exec -it kbhello:2 sh
+
+docker exec -it e90f9e56546b bash
+
+
+572b4e0030c7
+
+docker commit 572b4e0030c7 failedkb
+docker run --rm -it failedkb sh
+
+```
+docker build -t kbhello:2 .
+
+docker run kbhello:2
+
+docker container run -it kbhello:2
+docker run -it kbhello:2
+
+
+docker tag kbhello:2 192.168.0.1:5000/kbhello:2
+docker login 192.168.0.1:5000
+docker push 192.168.0.1:5000/kbhello:2
+```
+
+イメージ確認。121MB -> 80.7MB 小さくなったが springboot だとそれほどなのかな。
+
+```
+# docker images
+REPOSITORY                 TAG                 IMAGE ID            CREATED              SIZE
+192.168.0.1:5000/kbhello   2                   79f89a3cc762        About a minute ago   80.7MB
+kbhello                    2                   79f89a3cc762        About a minute ago   80.7MB
+192.168.0.1:5000/kbhello   1                   e6f5c6b7264b        2 days ago           121MB
+:
+```
+
+## デプロイ
+
+kbhello-deployment.yaml
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kbhello-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kbhello
+  template:
+    metadata:
+      labels:
+        app: kbhello
+    spec:
+      containers:
+      - name: kbhello
+        image: 192.168.0.1:5000/kbhello:2    <--- タグを2変更
+        ports:
+        - containerPort: 8080
+```
+
+apply 前に確認
+
+```
+$ kubectl get pod -o wide
+NAME                                  READY   STATUS    RESTARTS   AGE   IP            NODE   NOMINATED NODE   READINESS GATES
+kbhello-deployment-7cd47cbb58-f7hdq   1/1     Running   0          47h   10.244.1.82   kb2    <none>           <none>
+kbhello-deployment-7cd47cbb58-fhb4x   1/1     Running   0          47h   10.244.1.81   kb2    <none>           <none>
+```
+
+apply と get pod
+
+```
+kubectl apply -f kbhello-deployment.yaml
+kubectl get pod -o wide
+```
+
+
+kubectl rollout undo deployments/kbhello-deployment
+
+
+https://qiita.com/hoshi-k/items/6ad0323a204e9335c73b
+
+
+
+
+alternatives --install /usr/bin/javac javac /usr/local/jdk-11/bin/javac 2
+alternatives --config javac
+
+jdeps -version
+

@@ -1,0 +1,57 @@
+memo windowsの場合
+------------------
+
+## ビルド
+
+```
+> gradlew build
+```
+
+
+## 実行
+
+```
+> java -jar build\libs\kbhello-0.1.0.jar
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::        (v2.0.5.RELEASE)
+:
+:
+```
+確認
+
+```
+> curl localhost:8080
+Hello Docker World
+```
+
+
+## 依存モジュールを調べる
+
+java.base, java.logging に依存していることが分かる
+
+```
+> jdeps --list-deps build\libs\kbhello-0.1.0.jar
+  java.base
+  java.logging
+```
+
+## 最小限のJRE作成
+
+jlink に必要なモジュールを指定し、最小限のJREを作成する。jre-minディレクトリ下にJREが生成される。
+
+```
+> rmdir /S /Q jre-mini
+> jlink --compress=2 --module-path %JAVA_HOME%jmods --add-modules java.base,java.logging --output jre-mini
+```
+
+## 最小限のJREで実行
+
+```
+```
+

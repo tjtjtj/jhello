@@ -29,3 +29,6 @@ HELP.md
 .gradle
 /build/
 /bin/
+
+
+jre-mini
